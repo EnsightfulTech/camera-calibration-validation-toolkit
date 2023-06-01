@@ -1,0 +1,8 @@
+Left image reprojection error: 0.22338286440163757
+Right image reprojection error: 0.1838065499220331
+Box Length Performance:
+                Max: 60.35187887204741; Min: 59.29080642794375
+                Mean: 59.91595231819907; Stdev: 0.1803528849061732 
+Long Edge Length Performance:
+Max: 599.4046489444547; Min: 598.7097846917355
+Mean: 599.0546116476198; Stdev: 0.23127219712078503
