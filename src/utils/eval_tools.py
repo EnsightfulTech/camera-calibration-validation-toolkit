@@ -11,21 +11,6 @@ def find_chessboard(img):
     cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),SUBPIX_CRITERIA)
     return corners
 
-
-
-def find_chessboard_sbs_rectified(sbs_img):
-        left_rect, right_rect = None,None#self.rectifier.rectify_image(sbs_img=sbs_img) TODO
-
-        grayL = cv2.cvtColor(left_rect,cv2.COLOR_BGR2GRAY)
-        grayR = cv2.cvtColor(right_rect,cv2.COLOR_BGR2GRAY)
-        retL, cornersL = cv2.findChessboardCorners(grayL, CHECKERBOARD, None)
-        retR, cornersR = cv2.findChessboardCorners(grayR, CHECKERBOARD, None)
-
-        if ((retL == True) and (retR == True)):
-            cv2.cornerSubPix(grayL,cornersL,(11,11),(-1,-1),SUBPIX_CRITERIA)
-            cv2.cornerSubPix(grayR,cornersR,(11,11),(-1,-1),SUBPIX_CRITERIA)
-            return cornersL, cornersR
-
 def reproject(corners,cm,cd):
     objp = np.zeros((CHECKERBOARD[0]*CHECKERBOARD[1],3), np.float32)
     objp[:,:2] = np.mgrid[0:CHECKERBOARD[0],0:CHECKERBOARD[1]].T.reshape(-1,2)
@@ -33,12 +18,28 @@ def reproject(corners,cm,cd):
     proj_points,_ = cv2.projectPoints(objp, rvecs, tvecs, cm, cd)
     return proj_points
 
+def reproject_stereo(cornersL, cornersR,corners_rect_L,corners_rect_R, Q, cm1, cd1, cm2, cd2):
+    objp = np.zeros((CHECKERBOARD[0]*CHECKERBOARD[1],3), np.float32)
+    for i in range(0, 87):
+        img_coord = [corners_rect_L[i][0], corners_rect_R[i][0]]
+        
+        coord = get_world_coord_Q(Q, img_coord[0], img_coord[1],0)
+       
+        objp[i,:] = np.array(coord)
+       
+
+    retL, rvecsL, tvecsL = cv2.solvePnP(objp, cornersL, cm1, cd1)
+    retR, rvecsR, tvecsR = cv2.solvePnP(objp, cornersR, cm2, cd2)
+
+    proj_pointsL,_ = cv2.projectPoints(objp, rvecsL, tvecsL, cm1, cd1)
+    proj_pointsR,_ = cv2.projectPoints(objp, rvecsR, tvecsR, cm2, cd2)
+
+    return proj_pointsL, proj_pointsR
+
+
 def rectify(img, cm, cd, R, P, newImageSize):
-   
     MapX, MapY  = cv2.initUndistortRectifyMap(cm, cd, R, P, newImageSize, cv2.CV_16SC2)
-
     rect = cv2.remap(img, MapX, MapY, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-
     return rect
     
 
@@ -66,7 +67,8 @@ def eval_box_edge_len(cornersL, cornersR, Q):
     if len(edges)>=2:
         msg = f'''Box Length Performance:
                 Max: {max(edges)}; Min: {min(edges)}
-                Mean: {mean(edges)}; Stdev: {stdev(edges)} '''
+                Mean: {mean(edges)}; Stdev: {stdev(edges)} 
+                '''
     else:
         msg = "No correct box edge detected"
     return msg
@@ -88,11 +90,10 @@ def eval_long_edge_len( cornersL, cornersR, Q):
         distance = cv2.norm(coord1, coord2)
         edges.append(distance)
         
-    msg = f'''
-Long Edge Length Performance:
-Max: {max(edges)}; Min: {min(edges)}
-Mean: {mean(edges)}; Stdev: {stdev(edges)}
-'''
+    msg = f'''Long Edge Length Performance:
+        Max: {max(edges)}; Min: {min(edges)}
+        Mean: {mean(edges)}; Stdev: {stdev(edges)}
+        '''
     return msg
 
 

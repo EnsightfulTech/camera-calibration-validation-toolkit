@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
-from utils.eval_tools import find_chessboard, reproject, rectify,eval_box_edge_len, eval_long_edge_len
+from utils.eval_tools import find_chessboard, reproject, rectify,eval_box_edge_len, eval_long_edge_len, reproject_stereo
 
 
 def draw(img, subpix_corners, proj_points):
@@ -60,6 +60,20 @@ class Evaluation(QWidget):
     def __init__(self):
         super(Evaluation, self).__init__()
         self.initUI()
+
+        with open("src/test/camera_model.json", "r") as read_file:
+            decodedArray = json.load(read_file)
+            try:
+                self.cm1 = np.asarray(decodedArray['cm1'])
+                self.cd1 = np.asarray(decodedArray['cd1'])
+                self.cm2 = np.asarray(decodedArray['cm2'])
+                self.cd2 = np.asarray(decodedArray['cd2'])
+                self.R = np.asarray(decodedArray['R'])
+                self.T = np.asarray(decodedArray['T'])
+                self.image_size =  np.asarray(decodedArray['image_size'])
+            except: # if encounter None object, then no assignment
+                pass
+        self.image_path = "/home/hyx/Downloads/sbs/sbs_000.jpg"
 
     def initUI(self):
         # 创建垂直布局
@@ -138,33 +152,16 @@ class Evaluation(QWidget):
         img_left = sbs_img [:,                    0:  sbs_img.shape[1]//2]
         img_right = sbs_img [:, sbs_img.shape[1]//2:  sbs_img.shape[1]]
 
-        # cornersL, cornersR = self.find_chessboard_sbs(sbs_img)
-        # self.eval_box_edge_len(cornersL, cornersR)
-        # self.eval_long_edge_len(cornersL, cornersR)
-
         cornersL = find_chessboard(img_left)
         cornersR = find_chessboard(img_right)
-        proj_points_L = reproject(cornersL, self.cm1, self.cd1)
-        proj_points_R = reproject(cornersR, self.cm2, self.cd2)
-
-        errorL = [cv2.norm(cornersL[i,0,:],proj_points_L[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_L)) ]
-        errorL = sum(errorL) / (len(proj_points_L)-1)
-
-        errorR = [cv2.norm(cornersR[i,0,:],proj_points_R[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_R)) ]
-        errorR = sum(errorR) / (len(proj_points_R)-1)
-
-        file_name = os.path.basename(self.image_path)
-        txt_dir = self.save_dir+"/"+file_name[:-4]+".txt"
-        file = open(txt_dir, 'w', encoding='utf-8')
-        errorL_msg = "Left image reprojection error: {}\n".format(errorL)
-        errorR_msg = "Right image reprojection error: {}\n".format(errorR)
-        file.write(errorL_msg)
-        file.write(errorR_msg)
-        print(errorL_msg)
-        print(errorR_msg)
-
-        draw(img_left, cornersL, proj_points_L)
-        draw(img_right,cornersR, proj_points_R)
+        proj_points_L_ori = reproject(cornersL, self.cm1, self.cd1)
+        errorL_ori = [cv2.norm(cornersL[i,0,:],proj_points_L_ori[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_L_ori)) ]
+        errorL_ori= sum(errorL_ori) / (len(proj_points_L_ori)-1)
+        print("ori left error", errorL_ori)
+        proj_points_R_ori = reproject(cornersR, self.cm2, self.cd2)
+        errorR_ori = [cv2.norm(cornersR[i,0,:],proj_points_R_ori[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_R_ori)) ]
+        errorR_ori= sum(errorR_ori) / (len(proj_points_R_ori)-1)
+        print("ori right error", errorR_ori)
 
 
         R1, R2, P1, P2, Q, ROI1, ROI2 = \
@@ -180,12 +177,43 @@ class Evaluation(QWidget):
         rectR = rectify(img_right, self.cm2, self.cd2, R2, P2, self.image_size)
         corners_rect_L = find_chessboard(rectL)
         corners_rect_R = find_chessboard(rectR)
-        box_len_msg =eval_box_edge_len(corners_rect_L, corners_rect_R, Q)
-        box_long_msg =eval_long_edge_len(corners_rect_L, corners_rect_R, Q)
-        file.write(box_len_msg)
-        file.write(box_long_msg)
-        print(box_len_msg)
-        print(box_long_msg)
+
+        #test new algo
+
+        proj_points_L, proj_points_R = reproject_stereo(cornersL, cornersR, corners_rect_L,corners_rect_R, Q,self.cm1,self.cd1, self.cm2, self.cd2)
+
+
+
+
+        # box_len_msg =eval_box_edge_len(corners_rect_L, corners_rect_R, Q)
+        # box_long_msg =eval_long_edge_len(corners_rect_L, corners_rect_R, Q)
+        
+
+
+        errorL = [cv2.norm(cornersL[i,0,:],proj_points_L[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_L)) ]
+        errorL = sum(errorL) / (len(proj_points_L)-1)
+
+        errorR = [cv2.norm(cornersR[i,0,:],proj_points_R[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_R)) ]
+        errorR = sum(errorR) / (len(proj_points_R)-1)
+
+        # file_name = os.path.basename(self.image_path)
+        # txt_dir = self.save_dir+"/"+file_name[:-4]+".txt"
+        # file = open(txt_dir, 'w', encoding='utf-8')
+        errorL_msg = "Left image reprojection error: {}\n".format(errorL)
+        errorR_msg = "Right image reprojection error: {}\n".format(errorR)
+        # file.write(errorL_msg)
+        # file.write(errorR_msg)
+        print(errorL_msg)
+        print(errorR_msg)
+
+        draw(img_left, cornersL, proj_points_L)
+        draw(img_right,cornersR, proj_points_R)
+
+
+        # file.write(box_len_msg)
+        # file.write(box_long_msg)
+        # print(box_len_msg)
+        # print(box_long_msg)
 
 
 
