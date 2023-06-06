@@ -10,31 +10,50 @@ def find_chessboard(img):
     ret, corners = cv2.findChessboardCorners(gray, CHECKERBOARD, None)
     cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),SUBPIX_CRITERIA)
     return corners
+def find_chessboard_gray(gray):
+    ret, corners = cv2.findChessboardCorners(gray, CHECKERBOARD, None)
+    cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),SUBPIX_CRITERIA)
+    return corners
+
 
 def reproject(corners,cm,cd):
     objp = np.zeros((CHECKERBOARD[0]*CHECKERBOARD[1],3), np.float32)
     objp[:,:2] = np.mgrid[0:CHECKERBOARD[0],0:CHECKERBOARD[1]].T.reshape(-1,2)
+    print(objp.shape,objp[0])
+    # retval, rvecs, tvecs = cv2.solvePnP(objp, corners, cm, cd)
     retval, rvecs, tvecs = cv2.solvePnP(objp, corners, cm, cd)
     proj_points,_ = cv2.projectPoints(objp, rvecs, tvecs, cm, cd)
     return proj_points
 
-def reproject_stereo(cornersL, cornersR,corners_rect_L,corners_rect_R, Q, cm1, cd1, cm2, cd2):
+def reproject_stereo(cornersL, cornersR,corners_rect_L,corners_rect_R, Q, cm1, cd1, cm2, cd2, R, T):
     objp = np.zeros((CHECKERBOARD[0]*CHECKERBOARD[1],3), np.float32)
-    for i in range(0, 87):
+    for i in range(0, 88):
         img_coord = [corners_rect_L[i][0], corners_rect_R[i][0]]
-        
         coord = get_world_coord_Q(Q, img_coord[0], img_coord[1],0)
-       
         objp[i,:] = np.array(coord)
-       
 
+    
+    
+    min_x,min_y,_ = objp.min(axis=0)
+    delta_x = -min_x if min_x<0 else 0
+    delta_y = -min_y if min_y<0 else 0
+    objp = objp + np.array([delta_x,delta_y,0])   
+
+    objp = np.zeros((CHECKERBOARD[0]*CHECKERBOARD[1],3), np.float32)
+    objp[:,:2] = np.mgrid[0:CHECKERBOARD[0],0:CHECKERBOARD[1]].T.reshape(-1,2)
+    objp =objp*60 
+ 
     retL, rvecsL, tvecsL = cv2.solvePnP(objp, cornersL, cm1, cd1)
-    retR, rvecsR, tvecsR = cv2.solvePnP(objp, cornersR, cm2, cd2)
-
+    #retR, rvecsR, tvecsR = cv2.solvePnP(objp, cornersR, cm2, cd2)
+    
     proj_pointsL,_ = cv2.projectPoints(objp, rvecsL, tvecsL, cm1, cd1)
-    proj_pointsR,_ = cv2.projectPoints(objp, rvecsR, tvecsR, cm2, cd2)
+    # proj_pointsR,_ = cv2.projectPoints(objp, rvecsR, tvecsR, cm2, cd2)
 
-    return proj_pointsL, proj_pointsR
+    rvecsR,tvecsR = cv2.composeRT(rvecsL, tvecsL,cv2.Rodrigues(R)[0],T)[:2]
+
+    proj_pointsR,_ = cv2.projectPoints(objp, rvecsR, tvecsR, cm2, cd2) 
+
+    return proj_pointsL.astype(np.float32), proj_pointsR.astype(np.float32)
 
 
 def rectify(img, cm, cd, R, P, newImageSize):

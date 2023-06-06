@@ -73,7 +73,7 @@ class Evaluation(QWidget):
                 self.image_size =  np.asarray(decodedArray['image_size'])
             except: # if encounter None object, then no assignment
                 pass
-        self.image_path = "/home/hyx/Downloads/sbs/sbs_000.jpg"
+        self.image_path = "/home/hyx/Downloads/Feishu20230601-111436.jpg"
 
     def initUI(self):
         # 创建垂直布局
@@ -155,12 +155,16 @@ class Evaluation(QWidget):
         cornersL = find_chessboard(img_left)
         cornersR = find_chessboard(img_right)
         proj_points_L_ori = reproject(cornersL, self.cm1, self.cd1)
-        errorL_ori = [cv2.norm(cornersL[i,0,:],proj_points_L_ori[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_L_ori)) ]
-        errorL_ori= sum(errorL_ori) / (len(proj_points_L_ori)-1)
+        # errorL_ori = [cv2.norm(cornersL[i,0,:],proj_points_L_ori[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_L_ori)) ]
+        # errorL_ori= sum(errorL_ori) / (len(proj_points_L_ori)-1)
+        errorL_ori = cv2.norm(cornersL,proj_points_L_ori, cv2.NORM_L2)
+        errorL_ori= errorL_ori / (len(proj_points_L_ori)**0.5)
         print("ori left error", errorL_ori)
         proj_points_R_ori = reproject(cornersR, self.cm2, self.cd2)
-        errorR_ori = [cv2.norm(cornersR[i,0,:],proj_points_R_ori[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_R_ori)) ]
-        errorR_ori= sum(errorR_ori) / (len(proj_points_R_ori)-1)
+        # errorR_ori = [cv2.norm(cornersR[i,0,:],proj_points_R_ori[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_R_ori)) ]
+        # errorR_ori= sum(errorR_ori) / (len(proj_points_R_ori)-1)
+        errorR_ori = cv2.norm(cornersR,proj_points_R_ori, cv2.NORM_L2)
+        errorR_ori= errorR_ori / (len(proj_points_R_ori)**0.5)
         print("ori right error", errorR_ori)
 
 
@@ -180,21 +184,23 @@ class Evaluation(QWidget):
 
         #test new algo
 
-        proj_points_L, proj_points_R = reproject_stereo(cornersL, cornersR, corners_rect_L,corners_rect_R, Q,self.cm1,self.cd1, self.cm2, self.cd2)
-
-
-
+        proj_points_L, proj_points_R = reproject_stereo(cornersL, cornersR, corners_rect_L,corners_rect_R, Q,self.cm1,self.cd1, self.cm2, self.cd2,self.R,self.T)
 
         # box_len_msg =eval_box_edge_len(corners_rect_L, corners_rect_R, Q)
         # box_long_msg =eval_long_edge_len(corners_rect_L, corners_rect_R, Q)
         
 
+        # errorL = [cv2.norm(cornersL[i,0,:],proj_points_L[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_L)) ]
+        # errorL = sum(errorL) / (len(proj_points_L)-1)
 
-        errorL = [cv2.norm(cornersL[i,0,:],proj_points_L[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_L)) ]
-        errorL = sum(errorL) / (len(proj_points_L)-1)
+        # errorR = [cv2.norm(cornersR[i,0,:],proj_points_R[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_R)) ]
+        # errorR = sum(errorR) / (len(proj_points_R)-1)
 
-        errorR = [cv2.norm(cornersR[i,0,:],proj_points_R[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_R)) ]
-        errorR = sum(errorR) / (len(proj_points_R)-1)
+        errorL = cv2.norm(cornersL,proj_points_L, cv2.NORM_L2)
+        errorL = errorL / (len(proj_points_L)**0.5)
+
+        errorR = cv2.norm(cornersR,proj_points_R, cv2.NORM_L2) 
+        errorR = errorR / (len(proj_points_R)**0.5)
 
         # file_name = os.path.basename(self.image_path)
         # txt_dir = self.save_dir+"/"+file_name[:-4]+".txt"
