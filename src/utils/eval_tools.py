@@ -25,18 +25,16 @@ def reproject(corners,cm,cd):
     return proj_points
 
 def reproject_stereo(cornersL, cornersR,corners_rect_L,corners_rect_R, Q, cm1, cd1, cm2, cd2, R, T):
-    objp = np.zeros((CHECKERBOARD[0]*CHECKERBOARD[1],3), np.float32)
-    for i in range(0, 88):
-        img_coord = [corners_rect_L[i][0], corners_rect_R[i][0]]
-        coord = get_world_coord_Q(Q, img_coord[0], img_coord[1],0)
-        objp[i,:] = np.array(coord)
+    # objp = np.zeros((CHECKERBOARD[0]*CHECKERBOARD[1],3), np.float32)
+    # for i in range(0, 88):
+    #     img_coord = [corners_rect_L[i][0], corners_rect_R[i][0]]
+    #     coord = get_world_coord_Q(Q, img_coord[0], img_coord[1],0)
+    #     objp[i,:] = np.array(coord)
 
-    
-    
-    min_x,min_y,_ = objp.min(axis=0)
-    delta_x = -min_x if min_x<0 else 0
-    delta_y = -min_y if min_y<0 else 0
-    objp = objp + np.array([delta_x,delta_y,0])   
+    # min_x,min_y,_ = objp.min(axis=0)
+    # delta_x = -min_x if min_x<0 else 0
+    # delta_y = -min_y if min_y<0 else 0
+    # objp = objp + np.array([delta_x,delta_y,0])   
 
     objp = np.zeros((CHECKERBOARD[0]*CHECKERBOARD[1],3), np.float32)
     objp[:,:2] = np.mgrid[0:CHECKERBOARD[0],0:CHECKERBOARD[1]].T.reshape(-1,2)
@@ -54,6 +52,20 @@ def reproject_stereo(cornersL, cornersR,corners_rect_L,corners_rect_R, Q, cm1, c
 
     return proj_pointsL.astype(np.float32), proj_pointsR.astype(np.float32)
 
+def reproject_mono_stereo(cornersL, cornersR, cm1, cd1, cm2, cd2, R, T):
+    objp = np.zeros((CHECKERBOARD[0]*CHECKERBOARD[1],3), np.float32)
+    objp[:,:2] = np.mgrid[0:CHECKERBOARD[0],0:CHECKERBOARD[1]].T.reshape(-1,2)
+    objp =objp*60 
+
+    retL, rvecsL, tvecsL = cv2.solvePnP(objp, cornersL, cm1, cd1)
+    retR, rvecsR, tvecsR = cv2.solvePnP(objp, cornersR, cm2, cd2)
+    proj_pointsL,_ = cv2.projectPoints(objp, rvecsL, tvecsL, cm1, cd1)
+    proj_pointsR,_ = cv2.projectPoints(objp, rvecsR, tvecsR, cm2, cd2) 
+
+    rvecsR_stereo,tvecsR_stereo = cv2.composeRT(rvecsL, tvecsL,cv2.Rodrigues(R)[0],T)[:2]
+    proj_pointsR_stereo,_ = cv2.projectPoints(objp, rvecsR_stereo, tvecsR_stereo, cm2, cd2) 
+
+    return proj_pointsL.astype(np.float32), proj_pointsR.astype(np.float32),proj_pointsR_stereo.astype(np.float32)
 
 def rectify(img, cm, cd, R, P, newImageSize):
     MapX, MapY  = cv2.initUndistortRectifyMap(cm, cd, R, P, newImageSize, cv2.CV_16SC2)
