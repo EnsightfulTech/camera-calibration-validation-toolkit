@@ -60,20 +60,20 @@ class Evaluation(QWidget):
     def __init__(self):
         super(Evaluation, self).__init__()
         self.initUI()
-
-        with open("src/test/camera_model.json", "r") as read_file:
-            decodedArray = json.load(read_file)
-            try:
-                self.cm1 = np.asarray(decodedArray['cm1'])
-                self.cd1 = np.asarray(decodedArray['cd1'])
-                self.cm2 = np.asarray(decodedArray['cm2'])
-                self.cd2 = np.asarray(decodedArray['cd2'])
-                self.R = np.asarray(decodedArray['R'])
-                self.T = np.asarray(decodedArray['T'])
-                self.image_size =  np.asarray(decodedArray['image_size'])
-            except: # if encounter None object, then no assignment
-                pass
-        self.image_path = "/home/hyx/Downloads/Feishu20230601-111436.jpg"
+        self.save_dir = "src/test"
+        # with open("src/test/camera_model.json", "r") as read_file:
+        #     decodedArray = json.load(read_file)
+        #     try:
+        #         self.cm1 = np.asarray(decodedArray['cm1'])
+        #         self.cd1 = np.asarray(decodedArray['cd1'])
+        #         self.cm2 = np.asarray(decodedArray['cm2'])
+        #         self.cd2 = np.asarray(decodedArray['cd2'])
+        #         self.R = np.asarray(decodedArray['R'])
+        #         self.T = np.asarray(decodedArray['T'])
+        #         self.image_size =  np.asarray(decodedArray['image_size'])
+        #     except: # if encounter None object, then no assignment
+        #         pass
+        # self.image_path = "/home/hyx/Downloads/Feishu20230601-111436.jpg"
 
     def initUI(self):
         # 创建垂直布局
@@ -118,33 +118,36 @@ class Evaluation(QWidget):
         # 打开文件选择对话框
         filename = QFileDialog.getOpenFileName(self, '选择文件1', '.', 'JSON files (*.json)')
         # 更新文件路径标签
-        self.file1_label.setText(filename[0])
-
-        with open(filename[0], "r") as read_file:
-            decodedArray = json.load(read_file)
-            try:
-                self.cm1 = np.asarray(decodedArray['cm1'])
-                self.cd1 = np.asarray(decodedArray['cd1'])
-                self.cm2 = np.asarray(decodedArray['cm2'])
-                self.cd2 = np.asarray(decodedArray['cd2'])
-                self.R = np.asarray(decodedArray['R'])
-                self.T = np.asarray(decodedArray['T'])
-                self.image_size =  np.asarray(decodedArray['image_size'])
-                
-            except: # if encounter None object, then no assignment
-                pass
+     
+        if filename[0]!="":
+            self.file1_label.setText(filename[0])
+            with open(filename[0], "r") as read_file:
+                decodedArray = json.load(read_file)
+                try:
+                    self.cm1 = np.asarray(decodedArray['cm1'])
+                    self.cd1 = np.asarray(decodedArray['cd1'])
+                    self.cm2 = np.asarray(decodedArray['cm2'])
+                    self.cd2 = np.asarray(decodedArray['cd2'])
+                    self.R = np.asarray(decodedArray['R'])
+                    self.T = np.asarray(decodedArray['T'])
+                    self.image_size =  np.asarray(decodedArray['image_size'])
+                    
+                except: # if encounter None object, then no assignment
+                    pass
 
     def choose_file2(self):
         # 打开文件选择对话框
         filename = QFileDialog.getOpenFileName(self, '选择文件2', '.', 'JPG files (*.jpg)')
         # 更新文件路径标签
-        self.file2_label.setText(filename[0])
-        self.image_path = filename[0] 
+        if filename[0]!="":
+            self.file2_label.setText(filename[0])
+            self.image_path = filename[0] 
 
     def choose_file3(self):
         default_path = "src/test"
         dirname = QFileDialog.getExistingDirectory(None, "选择文件夹", default_path)
-        self.save_dir = dirname
+        if dirname:    
+            self.save_dir = dirname
 
     def evaluation(self):
         sbs_img = cv2.imread(str(self.image_path))
@@ -155,17 +158,18 @@ class Evaluation(QWidget):
         cornersL = find_chessboard(img_left)
         cornersR = find_chessboard(img_right)
         proj_points_L_ori = reproject(cornersL, self.cm1, self.cd1)
-        # errorL_ori = [cv2.norm(cornersL[i,0,:],proj_points_L_ori[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_L_ori)) ]
-        # errorL_ori= sum(errorL_ori) / (len(proj_points_L_ori)-1)
         errorL_ori = cv2.norm(cornersL,proj_points_L_ori, cv2.NORM_L2)
         errorL_ori= errorL_ori / (len(proj_points_L_ori)**0.5)
-        print("ori left error", errorL_ori)
+        
         proj_points_R_ori = reproject(cornersR, self.cm2, self.cd2)
-        # errorR_ori = [cv2.norm(cornersR[i,0,:],proj_points_R_ori[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_R_ori)) ]
-        # errorR_ori= sum(errorR_ori) / (len(proj_points_R_ori)-1)
         errorR_ori = cv2.norm(cornersR,proj_points_R_ori, cv2.NORM_L2)
         errorR_ori= errorR_ori / (len(proj_points_R_ori)**0.5)
-        print("ori right error", errorR_ori)
+        
+
+        errorL_msg_mono = "Left image mono reprojection error: {}\n".format(errorL_ori)
+        errorR_msg_mono = "Right image mono reprojection error: {}\n".format(errorR_ori)
+        print(errorL_msg_mono)
+        print(errorR_msg_mono)
 
 
         R1, R2, P1, P2, Q, ROI1, ROI2 = \
@@ -186,40 +190,33 @@ class Evaluation(QWidget):
 
         proj_points_L, proj_points_R = reproject_stereo(cornersL, cornersR, corners_rect_L,corners_rect_R, Q,self.cm1,self.cd1, self.cm2, self.cd2,self.R,self.T)
 
-        # box_len_msg =eval_box_edge_len(corners_rect_L, corners_rect_R, Q)
-        # box_long_msg =eval_long_edge_len(corners_rect_L, corners_rect_R, Q)
-        
-
-        # errorL = [cv2.norm(cornersL[i,0,:],proj_points_L[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_L)) ]
-        # errorL = sum(errorL) / (len(proj_points_L)-1)
-
-        # errorR = [cv2.norm(cornersR[i,0,:],proj_points_R[i,0,:], cv2.NORM_L2) for i in range(len(proj_points_R)) ]
-        # errorR = sum(errorR) / (len(proj_points_R)-1)
-
         errorL = cv2.norm(cornersL,proj_points_L, cv2.NORM_L2)
         errorL = errorL / (len(proj_points_L)**0.5)
 
         errorR = cv2.norm(cornersR,proj_points_R, cv2.NORM_L2) 
         errorR = errorR / (len(proj_points_R)**0.5)
 
-        # file_name = os.path.basename(self.image_path)
-        # txt_dir = self.save_dir+"/"+file_name[:-4]+".txt"
-        # file = open(txt_dir, 'w', encoding='utf-8')
-        errorL_msg = "Left image reprojection error: {}\n".format(errorL)
-        errorR_msg = "Right image reprojection error: {}\n".format(errorR)
-        # file.write(errorL_msg)
-        # file.write(errorR_msg)
+        file_name = os.path.basename(self.image_path)
+        txt_dir = self.save_dir+"/"+file_name[:-4]+".txt"
+        file = open(txt_dir, 'w', encoding='utf-8')
+        errorL_msg = "Left image stereo reprojection error: {}\n".format(errorL)
+        errorR_msg = "Right image stereo reprojection error: {}\n".format(errorR)
+        file.write(errorL_msg_mono)
+        file.write(errorR_msg_mono)
+        file.write(errorL_msg)
+        file.write(errorR_msg)
         print(errorL_msg)
         print(errorR_msg)
 
         draw(img_left, cornersL, proj_points_L)
         draw(img_right,cornersR, proj_points_R)
 
-
-        # file.write(box_len_msg)
-        # file.write(box_long_msg)
-        # print(box_len_msg)
-        # print(box_long_msg)
+        box_len_msg =eval_box_edge_len(corners_rect_L, corners_rect_R, Q)
+        box_long_msg =eval_long_edge_len(corners_rect_L, corners_rect_R, Q)
+        file.write(box_len_msg+"\n")
+        file.write(box_long_msg)
+        print(box_len_msg)
+        print(box_long_msg)
 
 
 

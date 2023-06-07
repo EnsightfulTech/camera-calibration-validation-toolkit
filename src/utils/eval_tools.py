@@ -19,7 +19,6 @@ def find_chessboard_gray(gray):
 def reproject(corners,cm,cd):
     objp = np.zeros((CHECKERBOARD[0]*CHECKERBOARD[1],3), np.float32)
     objp[:,:2] = np.mgrid[0:CHECKERBOARD[0],0:CHECKERBOARD[1]].T.reshape(-1,2)
-    print(objp.shape,objp[0])
     # retval, rvecs, tvecs = cv2.solvePnP(objp, corners, cm, cd)
     retval, rvecs, tvecs = cv2.solvePnP(objp, corners, cm, cd)
     proj_points,_ = cv2.projectPoints(objp, rvecs, tvecs, cm, cd)
