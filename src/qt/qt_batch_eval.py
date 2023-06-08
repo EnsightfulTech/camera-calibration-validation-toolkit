@@ -116,8 +116,8 @@ class EvaluationBatch(QWidget):
             imgpoints_left.append(cornersL)
             imgpoints_right.append(cornersR)
 
-        # imgpoints_left = np.load("points_left.npy")
-        # imgpoints_right = np.load("points_right.npy")
+        # imgpoints_left = np.load("src/test/points_left.npy")
+        # imgpoints_right = np.load("src/test/points_right.npy")
         print("calculating errors")
         for i in range(len(imgpoints_left)):
             proj_points_L, proj_points_R,proj_pointsR_stereo = reproject_mono_stereo(imgpoints_left[i],imgpoints_right[i],self.cm1,self.cd1,self.cm2,self.cd2,self.R,self.T)
@@ -133,17 +133,19 @@ class EvaluationBatch(QWidget):
             errorR_stereo = cv2.norm(imgpoints_right[i],proj_pointsR_stereo, cv2.NORM_L2) 
             errorR_stereo = errorR_stereo / (len(proj_pointsR_stereo)**0.5)
             right_error_stereo.append(errorR_stereo)
-            print(images[i],errorL,errorR,errorR_stereo)
 
         rpe_L = sum(left_error_mono)/len(left_error_mono)
         rpe_R = sum(right_error_mono)/len(right_error_mono)
         rpe_R_stereo =sum(right_error_stereo)/len(right_error_stereo)
-        info = f'''left mono reprojection error: {rpe_L}\nright mono reprojection error: {rpe_R}\nright stereo reprojection error: {rpe_R_stereo}
+        info = f'''left mono reprojection error: mean:{rpe_L} min:{min(left_error_mono)} max:{max(left_error_mono)}\n right mono reprojection error: mean:{rpe_R} min:{min(right_error_mono)} max{max(right_error_mono)}\nright stereo reprojection error: mean:{rpe_R_stereo} min:{min(right_error_stereo)} max:{max(right_error_stereo)}
         '''
         print(info)
         txt_dir = self.save_dir+"/"+self.imgs_dir.split("/")[-1]+".txt"
         file = open(txt_dir, 'w', encoding='utf-8')
         file.write(info)
+        file.write("\n\n")
+        detail_info = zip(images,left_error_mono,right_error_mono,right_error_stereo)
+        file.write("\n".join([str(item) for item in detail_info]))
         print("done")
 
 if __name__ == '__main__':
