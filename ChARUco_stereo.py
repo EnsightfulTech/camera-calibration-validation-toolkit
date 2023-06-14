@@ -2,7 +2,7 @@ import cv2
 import glob
 import numpy as np
 from tqdm import tqdm
-# from src.utils.json_tools import dump_mono_model
+from src.utils.json_tools import dump_stereo_model
 CHARUCO_CHECKERBOARD = (12,9) #charuco need to add 1 in each dimension
 CHECKERBOARD = (11,8)
 dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
@@ -12,6 +12,7 @@ criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 1e-6)
 stereocalibration_flags = cv2.CALIB_USE_INTRINSIC_GUESS
 
 demo_path="/home/hyx/Desktop/0609charuco/*.jpg" 
+save_path = "camera_model_?.json"
 
 leftCorners = []
 leftIds = []
@@ -66,6 +67,6 @@ _, cameraMatrixR, distCoeffsR, rvecsR, tvecsR, stdDeviationsIntrinsicsR, stdDevi
 ret, CM1, dist1, CM2, dist2, R, T, E, F, rvecs, tvecs, perViewErrors=cv2.stereoCalibrateExtended(objpoints,commonCornersL,commonCornersR,\
     cameraMatrixL, distCoeffsL, cameraMatrixR, distCoeffsR,(w,h),R=None,T=None,criteria=criteria,flags=stereocalibration_flags)
 
-
+dump_stereo_model( CM1, dist1, CM2, dist2, R, T,save_path)
 
 # print(perViewErrors[0])
