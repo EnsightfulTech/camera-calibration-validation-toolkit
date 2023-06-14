@@ -1,5 +1,6 @@
 PyQt5
 opencv-python
+opencv-contrib-python
 numpy
 matplotlib
-json
+tqdm
