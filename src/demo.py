@@ -1,4 +1,4 @@
-from qt.qt_eval import Evaluation
+from qt.qt_eval_new import Evaluation
 from PyQt5.QtWidgets import QApplication
 import sys
 

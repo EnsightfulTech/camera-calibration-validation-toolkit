@@ -67,12 +67,35 @@ def reproject_mono_stereo(cornersL, cornersR, cm1, cd1, cm2, cd2, R, T):
 
     return proj_pointsL.astype(np.float32), proj_pointsR.astype(np.float32),proj_pointsR_stereo.astype(np.float32)
 
+def reproject_error(detect_pts,proj_pts):
+    error =  cv2.norm(detect_pts,proj_pts, cv2.NORM_L2)
+    error = error / (len(proj_pts)**0.5)
+    return error
+
 def rectify(img, cm, cd, R, P, newImageSize):
     MapX, MapY  = cv2.initUndistortRectifyMap(cm, cd, R, P, newImageSize, cv2.CV_16SC2)
     rect = cv2.remap(img, MapX, MapY, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
     return rect
     
+def calculateRT(cornersL,cornersR,cm1,cd1,cm2,cd2):
+    objp = np.zeros((CHECKERBOARD[0]*CHECKERBOARD[1],3), np.float32)
+    objp[:,:2] = np.mgrid[0:CHECKERBOARD[0],0:CHECKERBOARD[1]].T.reshape(-1,2)
+    objp =objp*60 
 
+    retL, rvecsL, tvecsL = cv2.solvePnP(objp, cornersL, cm1, cd1)
+    retR, rvecsR, tvecsR = cv2.solvePnP(objp, cornersR, cm2, cd2)
+
+    rAO = cv2.Rodrigues(rvecsL)[0].T
+    tAO= -np.dot(rAO, tvecsL.reshape(3,))
+    r,t = cv2.composeRT(cv2.Rodrigues(rAO)[0], tAO.reshape(3,1),rvecsR, tvecsR)[:2]
+
+    return r,t
+def convert_angle(R):
+    y = np.arctan2(-R[2][0],np.sqrt(R[0][0]**2+R[1,0]**2))
+    x = np.arctan2(R[1][0]/np.cos(y),R[0][0]/np.cos(y))
+    z = np.arctan2(R[2][1]/np.cos(y),R[2][2]/np.cos(y))
+    
+    return np.rad2deg(x),np.rad2deg(y),np.rad2deg(z)
 def eval_box_edge_len(cornersL, cornersR, Q):
     # box edge lengths
     edges = []
