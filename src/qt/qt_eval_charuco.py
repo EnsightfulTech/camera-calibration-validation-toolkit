@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
-from utils.eval_tools import find_chessboard, reproject, rectify,eval_box_edge_len, eval_long_edge_len, reproject_stereo,calculateRT,convert_angle
+from utils.eval_tools import find_chessboard_charuco, reproject, rectify,eval_box_edge_len, eval_long_edge_len, reproject_stereo,calculateRT,convert_angle
 
 
 def draw(img, subpix_corners, proj_points):
@@ -155,8 +155,8 @@ class Evaluation(QWidget):
         img_left = sbs_img [:,                    0:  sbs_img.shape[1]//2]
         img_right = sbs_img [:, sbs_img.shape[1]//2:  sbs_img.shape[1]]
 
-        cornersL = find_chessboard(img_left)
-        cornersR = find_chessboard(img_right)
+        cornersL,cornersIdL = find_chessboard_charuco(img_left)
+        cornersR,cornersIdR = find_chessboard_charuco(img_right)
         proj_points_L_ori = reproject(cornersL, self.cm1, self.cd1)
         errorL_ori = cv2.norm(cornersL,proj_points_L_ori, cv2.NORM_L2)
         errorL_ori= errorL_ori / (len(proj_points_L_ori)**0.5)
@@ -183,8 +183,8 @@ class Evaluation(QWidget):
             )
         rectL = rectify(img_left, self.cm1, self.cd1, R1, P1, self.image_size)
         rectR = rectify(img_right, self.cm2, self.cd2, R2, P2, self.image_size)
-        corners_rect_L = find_chessboard(rectL)
-        corners_rect_R = find_chessboard(rectR)
+        corners_rect_L,_ = find_chessboard_charuco(rectL)
+        corners_rect_R,_ = find_chessboard_charuco(rectR)
 
         #test new algo
 
