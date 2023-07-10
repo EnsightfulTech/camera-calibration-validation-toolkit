@@ -3,6 +3,7 @@ import cv2
 from statistics import mean, stdev
 
 CHECKERBOARD=(11, 8)
+CHARUCO_CHECKERBOARD = (12,9)
 SUBPIX_CRITERIA = (cv2.TERM_CRITERIA_EPS+cv2.TERM_CRITERIA_MAX_ITER, 30, 0.000001)
 
 def find_chessboard(img):
@@ -15,16 +16,27 @@ def find_chessboard_gray(gray):
     cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),SUBPIX_CRITERIA)
     return corners
 
+def find_chessboard_charuco(img):
+    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
+    board = cv2.aruco.CharucoBoard(CHARUCO_CHECKERBOARD, .06, .045, dictionary)#.045m
+    charucoDetector = cv2.aruco.CharucoDetector(board)
+    charucoCorners, charucoIds,_,_ = charucoDetector.detectBoard(gray)
+    return charucoCorners, charucoIds
+
+def reproject_charuco():
+    pass
 
 def reproject(corners,cm,cd):
     objp = np.zeros((CHECKERBOARD[0]*CHECKERBOARD[1],3), np.float32)
     objp[:,:2] = np.mgrid[0:CHECKERBOARD[0],0:CHECKERBOARD[1]].T.reshape(-1,2)
     # retval, rvecs, tvecs = cv2.solvePnP(objp, corners, cm, cd)
-    retval, rvecs, tvecs = cv2.solvePnP(objp, corners, cm, cd)
+    print(objp.shape,corners.shape)
+    _, rvecs, tvecs = cv2.solvePnP(objp, corners, cm, cd)
     proj_points,_ = cv2.projectPoints(objp, rvecs, tvecs, cm, cd)
     return proj_points
 
-def reproject_stereo(cornersL, cornersR,corners_rect_L,corners_rect_R, Q, cm1, cd1, cm2, cd2, R, T):
+def reproject_stereo(cornersL, cm1, cd1, cm2, cd2, R, T):
     # objp = np.zeros((CHECKERBOARD[0]*CHECKERBOARD[1],3), np.float32)
     # for i in range(0, 88):
     #     img_coord = [corners_rect_L[i][0], corners_rect_R[i][0]]
@@ -107,8 +119,8 @@ def eval_box_edge_len(cornersL, cornersR, Q):
         img_coord_1 = [cornersL[point_id_1][0], cornersR[point_id_1][0]]
         img_coord_2 = [cornersL[point_id_2][0], cornersR[point_id_2][0]]
 
-        coord1 = get_world_coord_Q(Q, img_coord_1[0], img_coord_1[1],0)
-        coord2 = get_world_coord_Q(Q, img_coord_2[0], img_coord_2[1],0)
+        coord1 = get_world_coord_Q(Q, img_coord_1[0], img_coord_1[1])
+        coord2 = get_world_coord_Q(Q, img_coord_2[0], img_coord_2[1])
 
         distance = cv2.norm(coord1, coord2)
         if distance < 100:
@@ -138,8 +150,8 @@ def eval_long_edge_len( cornersL, cornersR, Q):
         img_coord_1 = [cornersL[point_id_1][0], cornersR[point_id_1][0]]
         img_coord_2 = [cornersL[point_id_2][0], cornersR[point_id_2][0]]
 
-        coord1 = get_world_coord_Q(Q, img_coord_1[0], img_coord_1[1],0)
-        coord2 = get_world_coord_Q(Q, img_coord_2[0], img_coord_2[1],0)
+        coord1 = get_world_coord_Q(Q, img_coord_1[0], img_coord_1[1])
+        coord2 = get_world_coord_Q(Q, img_coord_2[0], img_coord_2[1])
         distance = cv2.norm(coord1, coord2)
         edges.append(distance)
         
@@ -150,7 +162,7 @@ def eval_long_edge_len( cornersL, cornersR, Q):
     return msg
 
 
-def get_world_coord_Q(Q, img_coord_left, img_coord_right,d):
+def get_world_coord_Q(Q, img_coord_left, img_coord_right):
     """Compute world coordniate by the Q matrix
     
     img_coord_left:  segment endpoint coordinate on the  left image
