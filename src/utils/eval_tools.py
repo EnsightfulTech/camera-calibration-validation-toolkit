@@ -102,10 +102,11 @@ def calculateRT(cornersL,cornersR,cm1,cd1,cm2,cd2):
     r,t = cv2.composeRT(cv2.Rodrigues(rAO)[0], tAO.reshape(3,1),rvecsR, tvecsR)[:2]
 
     return r,t
+
 def convert_angle(R):
     y = np.arctan2(-R[2][0],np.sqrt(R[0][0]**2+R[1,0]**2))
-    x = np.arctan2(R[1][0]/np.cos(y),R[0][0]/np.cos(y))
-    z = np.arctan2(R[2][1]/np.cos(y),R[2][2]/np.cos(y))
+    z = np.arctan2(R[1][0]/np.cos(y),R[0][0]/np.cos(y))
+    x = np.arctan2(R[2][1]/np.cos(y),R[2][2]/np.cos(y))
     
     return np.rad2deg(x),np.rad2deg(y),np.rad2deg(z)
 def eval_box_edge_len(cornersL, cornersR, Q):
